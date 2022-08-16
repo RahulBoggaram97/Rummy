@@ -27,29 +27,34 @@ public class RummyManager : MonoBehaviour
 
     [Header("The deck")]
     public List<Card> Deck;
+    public List<Card> discardPile;
     public GameObject dummyCardPrefab;
 
     List<Player> playerList;
-   
 
 
-   
 
 
-   
+
+    System.Random rand = new System.Random();
+    
     private void Awake()
     {
         if(instance == null)
         instance = this;
+ 
     }
 
     private void Start()
     {
         Deck = new List<Card>();
         playerList = new List<Player>();
+        discardPile = new List<Card>();
 
         populateDeck();
+        shuffleDeck();
         distributeCards(1);
+        
     }
 
     //Intiating the deck
@@ -92,13 +97,19 @@ public class RummyManager : MonoBehaviour
     }
     void shuffleDeck()
     {
-
-
-
+        for (int i = Deck.Count - 1; i > 0; i--)
+        {
+            int k = rand.Next(i + 1);
+            Card value = Deck[k];
+            Deck[k] = Deck[i];
+            Deck[i] = value;
+        }
     }
 
 
 
+
+    //Distributing the cards
     void distributeCards(int numOfPlayers)
     {
         //make players and the distribute the cards
@@ -115,10 +126,12 @@ public class RummyManager : MonoBehaviour
     {
         for (int j = 0; j < 13; j++)
         {
-            playerList[playerIndex].RecieveOneCard(drawSequently());
+            playerList[playerIndex].RecieveOneCard(drawSequentlyFromDeck());
 
         }
+       ;
     }
+
     int playergernrated = 0;
     void GenrateNewPlayer()
     {
@@ -130,7 +143,16 @@ public class RummyManager : MonoBehaviour
     }
 
 
-    
+    //Drawing cards from Deck
+
+    void drawWildCardFromDeck()
+    {
+
+    }
+    void AddToDiscardPile()
+    {
+
+    }
     GameObject drawRandomCardFromDeck()
     {
         int randomDeckIndex = Random.Range(0, Deck.Count);
@@ -139,9 +161,7 @@ public class RummyManager : MonoBehaviour
 
         return DrawnCard;
     }
-
-   
-    GameObject drawSequently()
+    GameObject drawSequentlyFromDeck()
     {
         
         GameObject DrawnCard = Deck[0].gameObject;
@@ -150,6 +170,7 @@ public class RummyManager : MonoBehaviour
 
         return DrawnCard;
     }
+    
 
 
     //Card movement helpers

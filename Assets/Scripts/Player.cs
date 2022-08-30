@@ -20,7 +20,7 @@ public class Player : MonoBehaviour
     bool shouldCreatNewGroup;
 
     int childCount;
-
+    
     private void Awake()
     {
         handHeldCards = new List<Card>();

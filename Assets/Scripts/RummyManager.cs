@@ -16,6 +16,7 @@ public class RummyManager : MonoBehaviour
     [Header("transform for spawn")]
     public Transform DeckTransform;
     public Transform playerSpawner;
+    public Transform discardPileTransform;
 
     [Header("Card spirtes")]
     [Tooltip("start with two of spade, the j, q, k and ace, and then club, diomand and heart")]
@@ -28,6 +29,7 @@ public class RummyManager : MonoBehaviour
     [Header("The deck")]
     public List<Card> Deck;
     public List<Card> discardPile;
+
     public GameObject dummyCardPrefab;
 
     List<Player> playerList;
@@ -37,12 +39,12 @@ public class RummyManager : MonoBehaviour
 
 
     System.Random rand = new System.Random();
-    
+
     private void Awake()
     {
-        if(instance == null)
-        instance = this;
- 
+        if (instance == null)
+            instance = this;
+
     }
 
     private void Start()
@@ -53,8 +55,10 @@ public class RummyManager : MonoBehaviour
 
         populateDeck();
         shuffleDeck();
-        distributeCards(1);
-        
+        distributeCards(4);
+        setUpRummyBot();
+        drawWildCardFromDeck();
+
     }
 
     //Intiating the deck
@@ -78,7 +82,7 @@ public class RummyManager : MonoBehaviour
         {
             for (int j = 0; j < 13; j++)
             {
-                Deck.Add(genrateOneCard((CardNum)j, (CardSuit)i, allTheCardSprite[(i*13) + j], false));
+                Deck.Add(genrateOneCard((CardNum)j, (CardSuit)i, allTheCardSprite[(i * 13) + j], false));
             }
         }
     }
@@ -88,9 +92,9 @@ public class RummyManager : MonoBehaviour
         GameObject newCardObject = Instantiate(cardPrefab, DeckTransform);
         Card newCard = newCardObject.GetComponent<Card>();
 
-       
 
-        newCard.GenrateTheCard(newNum, newSuit, cardImage , false);
+
+        newCard.GenrateTheCard(newNum, newSuit, cardImage, false);
 
         return newCard;
 
@@ -122,37 +126,76 @@ public class RummyManager : MonoBehaviour
         activePlayer = playerList[0];
 
     }
-    void distributeForOnePlayer(int playerIndex)
-    {
-        for (int j = 0; j < 13; j++)
-        {
-            playerList[playerIndex].RecieveOneCard(drawSequentlyFromDeck());
-
-        }
-       ;
-    }
 
     int playergernrated = 0;
     void GenrateNewPlayer()
     {
         GameObject newPlayer = Instantiate(playerPrefab, playerSpawner);
-        newPlayer.name = "Player " +  playergernrated.ToString();
+        newPlayer.name = "Player " + playergernrated.ToString();
         playerList.Add(newPlayer.GetComponent<Player>());
 
         playergernrated++;
     }
+
+    void setUpRummyBot()
+    {
+        for (int i = 1; i < playerList.Count; i++)
+        {
+            MakeOnePlayerBot(playerList[i].gameObject);
+        }
+    }
+
+    int botGenrated = 0;
+    void MakeOnePlayerBot(GameObject _player)
+    {
+        RummyBot bot = _player.AddComponent<RummyBot>();
+
+        Player newPlayer = _player.GetComponent<Player>();
+
+        //transfering the handheld cards
+        for (int i = 0; i < newPlayer.handHeldCards.Count ; i++)
+        {
+            newPlayer.handHeldCards[i].transform.SetParent(bot.transform);
+            bot.handHeldCards.Add(newPlayer.handHeldCards[i]);
+          
+        }
+
+        Destroy(_player.GetComponent<Player>());
+        bot.setUpBot();
+        
+        
+
+        _player.name = "Bot#" + botGenrated.ToString();
+        botGenrated++;
+    }
+    void distributeForOnePlayer(int playerIndex)
+    {
+        for (int j = 0; j < 13; j++)
+        {
+            playerList[playerIndex].RecieveOneCard(drawTheTopCardFromDeck());
+
+        }
+       ;
+    }
+
+    
 
 
     //Drawing cards from Deck
 
     void drawWildCardFromDeck()
     {
+        GameObject wildCard = drawTheTopCardFromDeck();
+        WildCardPopUpAnime(wildCard);
 
     }
-    void AddToDiscardPile()
+
+    void WildCardPopUpAnime(GameObject wildCard)
     {
-
+        wildCard.transform.LeanSetLocalPosX(40);
+        wildCard.transform.rotation = Quaternion.Euler(0, 0, 90);
     }
+
     GameObject drawRandomCardFromDeck()
     {
         int randomDeckIndex = Random.Range(0, Deck.Count);
@@ -161,7 +204,7 @@ public class RummyManager : MonoBehaviour
 
         return DrawnCard;
     }
-    GameObject drawSequentlyFromDeck()
+    GameObject drawTheTopCardFromDeck()
     {
         
         GameObject DrawnCard = Deck[0].gameObject;
@@ -170,8 +213,61 @@ public class RummyManager : MonoBehaviour
 
         return DrawnCard;
     }
-    
 
+    public void PackYourTurn()
+    {
+        //fetch the hand held cards
+
+
+        //shuffle them 
+        for (int i = activePlayer.handHeldCards.Count - 1; i > 0; i--)
+        {
+            int k = rand.Next(i + 1);
+            Card value = activePlayer.handHeldCards[k];
+            activePlayer.handHeldCards[k] = activePlayer.handHeldCards[i];
+            activePlayer.handHeldCards[i] = value;
+        }
+
+        Destroy(DeckTransform.GetChild(DeckTransform.childCount - 1).gameObject);
+
+
+        //place at the bottom of the deck
+        for (int i = 0; i < activePlayer.handHeldCards.Count; i++)
+        {
+            Deck.Add(activePlayer.handHeldCards[i]);
+
+            activePlayer.handHeldCards[i].gameObject.transform.SetParent(DeckTransform);
+            activePlayer.handHeldCards[i].gameObject.transform.localPosition = Vector3.zero;
+        }
+
+        //adding the last back card;
+        GameObject backCard = Instantiate(cardPrefab, DeckTransform);
+        Destroy(backCard.GetComponent<Card>());
+        backCard.GetComponent<Image>().sprite = allTheCardSprite[53];
+
+        activePlayer.handHeldCards.Clear();
+
+
+    }
+
+    //Adding to the discardPile
+    void AddToDiscardPile(List<Card> newCardList)
+    {
+        for (int i = 0; i < newCardList.Count; i++)
+        {
+            newCardList[i].transform.SetParent(discardPileTransform);
+            discardPile.Add(newCardList[i]);
+            
+        }
+    }
+    void AddToDiscardPile(Card newCard)
+    {
+        newCard.transform.SetParent(discardPileTransform);
+        discardPile.Add(newCard);
+
+    }
+
+    
 
     //Card movement helpers
     public GameObject createDummyCard()
@@ -179,4 +275,10 @@ public class RummyManager : MonoBehaviour
         return Instantiate(dummyCardPrefab);
     }
 
+
+    public void PlayTurn(Player _player)
+    {
+        
+        _player.RecieveOneCard(drawTheTopCardFromDeck());
+    }
 }
